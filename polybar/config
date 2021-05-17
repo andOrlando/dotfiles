@@ -1,0 +1,184 @@
+[colors] 
+blc4	= #141421
+blc3	= #282a2e
+blc2	= #4A4B4D
+blc1	= #62697C
+fg1		= #f5fbff
+fg2		= #d5dade
+fg3		= #babfc2
+fg4		= #a0a5a8
+fg5		= #81868a
+fg6		= #6d7275
+blu5	= #2D41EA
+blu4	= #5464EA
+blu3	= #7F8BF4
+blu2	= #B0B8FF
+blu1	= #CBD0FF
+red		= #E35462
+
+[bar/base]
+font-0 = Source Code Pro:size=11;3
+font-1 = Source Code Pro:size=11:weight=bold;3
+font-2 = Font Awesome 5 Free Solid:size=12;3
+font-3 = Font Awesome 5 Free Solid:size=12;2
+font-4 = Font Awesome 5 Free Solid:size=8;1
+
+override-redirect = true
+wm-restack = i3
+scroll-up = i3wm-wsnext
+scroll-down = i3wm-wsprev
+;radius = 16.0
+;overline-size = 2
+;underline-size = 2
+line-size = 3
+
+padding-left = 2
+padding-right = 2
+module-margin-left = 0
+module-margin-right = 0
+
+
+
+[bar/main]
+inherit = bar/base
+width = 100%:-30
+height = 32
+offset-x = 15
+offset-y = 8
+background = ${colors.blc4}
+
+modules-left = i3
+modules-right = audio date battery
+
+[bar/memory]
+inherit = bar/base
+width = 28
+height = 32
+offset-x = 100%:-61
+offset-y = 8
+background = ${colors.blc4}
+line-size = 6
+
+modules-center = cpu memory
+
+
+[bar/bottomleft]
+inherit = bar/base
+width = 1%
+height = 32
+offset-x = 99%:-15
+offset-y = 100%:-40
+background = #00ffffff
+
+tray-position = right
+tray-background = ${colors.blc4}
+modules-left = empty
+
+
+[module/date]
+type = internal/date
+date = "%{u#FF6292}%{+u} %{T2}%H:%M %{T-}%{F#b9c3c9}%S%{-u}  %{u#7753DD}%{+u}%{F-}%{T4} %{T-}%d%{-u}  "
+
+[module/i3]
+type = internal/i3
+pin-workspaces = true
+
+label-mode-padding=2
+
+label-focused = "%{u#5464EA}%{+u} %name% %{-u}"
+label-unfocused = " %name% "
+label-urgent= "%{u#B0B8FF}%{+u} %name% %{-u}"
+label-focused-background = ${colors.blc3}
+label-mode-background = ${colors.blc4}
+
+[module/audio]
+type = internal/pulseaudio
+format-volume = <ramp-volume> <label-volume>
+
+ramp-volume-0 = "%{F#6d7275}%{u#6d7275}%{+u}%{F-}"
+ramp-volume-1 = "%{F#81868a}%{u#81868a}%{+u}%{F-}"
+ramp-volume-2 = "%{F#a0a5a8}%{u#a0a5a8}%{+u}%{F-}"
+ramp-volume-3 = "%{F#babfc2}%{u#a0a5a8}%{+u}%{F-}"
+ramp-volume-4 = "%{F#d5dade}%{u#a0a5a8}%{+u}%{F-}"
+ramp-volume-5 = "%{F#F5FBFF}%{u#F5FBFF}%{+u}%{F-}"
+
+label-muted = "%{F#ff5959}%{u#ff5959}%{+u} %{F-} mtd  "
+label-muted-minlen = 30
+label-volume = "%percentage:3%%%{-u}  "
+
+[module/network]
+type = internal/network
+interface = wlp1s0
+interval = 1.0
+format-connected = <ramp-signal>
+
+ramp-signal-0 = "%{u#2D41EA}%{+u}%{T5}%{F#86818a}"
+ramp-signal-1 = "%{u#2D41EA}%{+u}%{T5}%{F#86818a}"
+ramp-signal-2 = "%{u#2D41EA}%{+u}%{T5}%{F#86818a}"
+ramp-signal-3 = "%{u#2D41EA}%{+u}%{T5}%{F#86818a}"
+ramp-signal-4 = "%{u#2D41EA}%{+u}%{T5}%"
+
+label-connected = ""
+
+[module/battery]
+type = internal/battery
+full-at = 99
+format-charging = <ramp-capacity> <label-charging>
+format-discharging = <ramp-capacity> <label-discharging>
+format-full = <label-full>
+
+battery = BAT0
+adapter = AC0
+
+label-charging = "%{u#3AF196}%{+u}%percentage:3%%%{-u}     "
+label-discharging = "%{u#3AF196}%{+u}%percentage:3%%%{-u}     "
+label-full = "%{u#3AF196}%{+u} 100%%{-u}     "
+
+ramp-capacity-0 = ""
+ramp-capacity-1 = ""
+ramp-capacity-2 = ""
+ramp-capacity-3 = ""
+ramp-capacity-4 = ""
+
+[module/cpu]
+type = internal/cpu
+format = <label><ramp-load>
+label = "%{u#FFFFFF}%{+u}"
+ramp-load-0 = ▁
+ramp-load-1 = ▂
+ramp-load-2 = ▃
+ramp-load-3 = ▄
+ramp-load-4 = ▅
+ramp-load-5 = ▆
+ramp-load-6 = ▇
+ramp-load-7 = █
+
+[module/memory]
+type = internal/memory
+format = <label><ramp-used><ramp-swap-used>
+label = "%{u#FFFFFF}%{+u}"
+ramp-used-0 = ▁
+ramp-used-1 = ▂
+ramp-used-2 = ▃
+ramp-used-3 = ▄
+ramp-used-4 = ▅
+ramp-used-5 = ▆
+ramp-used-6 = ▇
+ramp-used-7 = █
+ramp-used-color = #ffffff
+ramp-swap-used-0 = ▁
+ramp-swap-used-1 = ▂
+ramp-swap-used-2 = ▃
+ramp-swap-used-3 = ▄
+ramp-swap-used-4 = ▅
+ramp-swap-used-5 = ▆
+ramp-swap-used-6 = ▇
+ramp-swap-used-7 = █
+
+[module/empty]
+type = custom/text
+content = " "
+format-background = #00ffffff
+
+
+; vim:ft=dosini
