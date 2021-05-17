@@ -1,12 +1,7 @@
 " Runtimepath: {{{
 if has('nvim')
-	set viminfo+=n$XDG_CACHE_HOME/nvim/viminfo
+	set viminfo+="$XDG_CACHE_HOME/nvim/viminfo"
 endif
-"let $MYVIMRC='$XDG_CONFIG_HOME/nvim/vimrc'
-"set backupdir=$XDG_CACHE_HOME/nvim,~/,/tmp
-"set directory=$XDG_CACHE_HOME/nvim,~/,/tmp
-"set runtimepath=$XDG_CONFIG_HOME/nvim,$XDG_CONFIG_HOME/nvim/after,/usr/share/vim/runtime
-"set packpath+=$XDG_CONFIG_HOME/nvim
 " }}}
 " Helper Functions: {{{
 lua << EOF
@@ -73,13 +68,13 @@ endif
 
 
 "function for colors
-syn include syntax/vim-coloresque.vim
+"syn include syntax/vim-coloresque.vim
 
 "does color highlighting
-fun! Colors()
-	syn include syntax/vim-coloresque.vim
-	syn sync fromstart
-endfun
+"fun! Colors()
+	"syn include syntax/vim-coloresque.vim
+	"syn sync fromstart
+"endfun
 
 "gets the syntax and stuff of the thing under the cursor
 fun! GetSyn()
@@ -101,7 +96,7 @@ endfun
 
 "sets up faster commands
 command! GetSyn call GetSyn()
-command! ColorSyn call Colors()
+"command! ColorSyn call Colors()
 command! GetSynLine call GetSynLine()
 
 "}}}
@@ -303,6 +298,7 @@ Plug 'SirVer/ultisnips'
 Plug 'tpope/vim-fugitive'
 Plug 'preservim/nerdcommenter'
 Plug 'tbastos/vim-lua'
+Plug 'gko/vim-coloresque'
 call plug#end()
 " }}}
 " Vimtex: {{{
