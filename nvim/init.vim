@@ -302,7 +302,7 @@ Plug 'gko/vim-coloresque'
 call plug#end()
 " }}}
 " Vimtex: {{{
-let g:vimtex_view_general_viewer= 'evince'
+let g:vimtex_view_general_viewer= 'zathura'
 let g:vimtex_fold_enabled = 1
 let g:vimtex_compiler_progname = 'nvr'
 au BufNewFile,BufRead *.tex exec 'setl indentexpr= | setl tw=80'

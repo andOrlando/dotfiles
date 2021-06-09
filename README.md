@@ -9,3 +9,5 @@ move computers, but this is in preparation to possibly
 eventually someday having to move computers so in time it 
 may be made semi-portable. It'll probably never not support 
 true color though because I like that too much
+
+all the coolest stuff is done in awesome/deco

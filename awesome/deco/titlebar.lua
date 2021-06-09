@@ -1,48 +1,53 @@
-local gears = require("gears")
-local awful = require("awful")
-local wibox = require("wibox")
-local naughty = require("naughty")
-local xresources = require("beautiful.xresources")
+local gears = require "gears"
+local awful = require "awful"
+local wibox = require "wibox"
+local naughty = require "naughty"
+local xresources = require "beautiful.xresources"
 local dpi = xresources.apply_dpi
-local awestore = require("awestore")
+local awestore = require "awestore"
+local interpolate = require("lib.interpolate").interpolate
+local tooltip = require "lib.tooltip"
 
-
+--- Draw a circle.
+-- @param cr cairo, given by draw
+-- @param height height, given by draw
+-- @see get_widget
 local function draw_arc(cr, height)
 	cr:arc(height/2, height/2, dpi(5)*0.9, 0, math.pi*2)
 	cr:fill()
 end
 
-local function dim(pos, w, r, g, b)
-	w.draw = 
-	function(self, context, cr, width, height)
-		cr:set_source_rgb( 
-			r - pos > 0 and r - pos or 0,
-			g - pos > 0 and g - pos or 0,
-			b - pos > 0 and b - pos or 0
-		)
-		draw_arc(cr, height)
-	end
-	w:emit_signal("widget::redraw_needed")
-end
-
-local function gray(pos, w, r, g, b, dest)
+--- Udpate the draw function with new colors.
+-- @param w widget
+-- @param r the red value [0, 1]
+-- @param g the green value [0, 1]
+-- @param b the blue value [0, 1]
+-- @see get_widget
+local function update_rgb(w, r, g, b)
 	w.draw =
 	function(self, context, cr, width, height)
 		cr:set_source_rgb(
-			r > dest and r - (r - dest) * pos or r + (dest - r) * pos,
-			g > dest and g - (g - dest) * pos or g + (dest - g) * pos,
-			b > dest and b - (b - dest) * pos or b + (dest - b) * pos
+			r > 0 and r or 0,
+			g > 0 and g or 0,
+			b > 0 and b or 0
 		)
 		draw_arc(cr, height)
 	end
 	w:emit_signal("widget::redraw_needed")
 end
 
-local function get_widget(r, g, b, c, buttons)
-	-- r, g, b are floats from [0, 1]
-	-- c is the client or nil, determines whether it should gray on unfocus
-	-- buttons are the buttons
-
+--- Get a circular widget.
+-- TODO: memoize colors: https://www.lua.org/pil/17.1.html
+-- @param r the red value [0, 1]
+-- @param g the green value [0, 1]
+-- @param b the blue value [0, 1]
+-- @param buttons list of `awful.button`s
+-- @param[opt] args, list of arguments
+--     @field gray the amount to gray it by [0, 1], needs client
+--     @field dim the amount to dim it by [0, 1]
+--     @field client the client the widget is attatched to
+-- @return the circular widget
+local function get_widget(r, g, b, buttons, args)
 	local w = wibox.widget {
 		fit = 
 		function(self, context, width, height)
@@ -59,80 +64,86 @@ local function get_widget(r, g, b, c, buttons)
 		layout = wibox.widget.base.make_widget
 	}
 
-	--dimming stuff
-	local dim_tween = awestore.tweened(0, {
-		duration = 100,
-		easing = awestore.easing.linear
-	})
+	if not args then return w end
 
-	dim_tween:subscribe(function(pos)
-		dim(pos, w, r, g, b)
-	end)
+	-- dimming and animation
+	if args.dim then
+		w.d_rgb = {r=0, g=0, b=0, dim=0} --change in rgb/dim
+		
+		--dim interpolator
+		w.dim_intp = interpolate({ slope = 0.045 })
 
-	w:connect_signal("mouse::enter", function()
-		dim_tween:set(0.30)
-	end)
+		table.insert(w.dim_intp.subscribed, function(pos)
+			w.d_rgb.dim = pos
+			update_rgb(w, 
+				r + w.d_rgb.dim + w.d_rgb.r,
+				g + w.d_rgb.dim + w.d_rgb.g,
+				b + w.d_rgb.dim + w.d_rgb.b
+			)
+		end)
 
-	w:connect_signal("mouse::leave", function()
-		dim_tween:set(0)
-	end)
+		w:connect_signal("mouse::enter", function() w.dim_intp:set(-args.dim) end)
+		w:connect_signal("mouse::leave", function() w.dim_intp:set(0) end)
+	end
 
-	--checks if client is given
-	if not c then return w end
+	--graying and animation
+	if args.gray then 
+		assert(args.client, "if you want gray, specify a client c")
 
-	--graying stuff
-	local gray_tween = awestore.tweened(0, {
-			duration = 300,
-			easing = awestore.easing.linear
-	})
+		--gray interpolator 
+		w.gray_intp = interpolate({ slope = 0.1 })
 
-	gray_tween:subscribe(function(pos)
-		gray(pos, w, r, g, b, 0.60)
-	end)
+		table.insert(w.gray_intp.subscribed, function(pos)
+			w.d_rgb.r = (args.gray - r) * pos
+			w.d_rgb.g = (args.gray - g) * pos
+			w.d_rgb.b = (args.gray - b) * pos
+			update_rgb(w, 
+				r + w.d_rgb.dim + w.d_rgb.r,
+				g + w.d_rgb.dim + w.d_rgb.g,
+				b + w.d_rgb.dim + w.d_rgb.b
+			)
+		end)
 
-	c:connect_signal("focus", function()
-		gray_tween:set(0)
-	end)
-
-	c:connect_signal("unfocus", function()
-		gray_tween:set(1)
-	end)
-	
-	--w.gray = function() gray_tween:set(1) end
-	--w.ungray = function() gray_tween:set(0) end
-	
+		args.client:connect_signal("focus", function() w.gray_intp:set(0) end)
+		args.client:connect_signal("unfocus", function() w.gray_intp:set(1) end)
+	end
+		
 	return w
 end
 
-local function create_name_widget(c)
-	local w = wibox.widget {
-		valign = "bottom",
-		widget = wibox.widget.textbox
+--- Get info dot widget.
+-- @param c the client
+-- @return the info dot
+-- @see get_widget
+local function get_info_dot(c)
+
+	local w = get_widget(0.5, 0.5, 1, 
+		awful.button({}, 1, function()
+			c.ontop = not c.ontop
+		end),
+		{ dim = 0.1 })
+
+	local tt = tooltip.create_tooltip {
+		markup = "hiya"
 	}
 
-	local gray_tweened = awestore.tweened(0.6, {
-		duration = 300,
-		easing = awestore.easing.linear
-	})
-
-	gray_tweened:subscribe(function(pos)
-		w.markup = '<span foreground="#'..
-			string.rep(string.format("%x", math.floor(pos * 255)), 3)
-			..'">'..c.class..'</span>'
-		w:emit_signal("widget::redraw_needed")
+	w:connect_signal("mouse::enter", function() 
+		gears.timer {
+			timeout = 0.1,
+			callback = function()
+				print(mouse.current_widget_geometry) 
+			end
+		}:start()
 	end)
-
-	c:connect_signal("focus", function()
-		gray_tweened:set(1)
-	end)
+	w:connect_signal("mouse::leave", function() end)
 	
-	c:connect_signal("unfocus", function()
-		gray_tweened:set(0.6)
-	end)
-
 	return w
 end
 
+--- Create titlebars
+-- @param c client
+-- @see get_widget
+-- @see get_info_dot
 local function create_titlebars(c)
 
 	--creates buttons for dragging
@@ -150,38 +161,42 @@ local function create_titlebars(c)
 		
 	--creates titlebar
 	awful.titlebar(c, {size=dpi(22)}) : setup {
-		{
+		--[[{
 			create_name_widget(c),
 			margins = dpi(2),
 			top = dpi(3),
 			left = dpi(4),
 			buttons = buttons,
 			widget = wibox.container.margin
-		},
+		},]]
+		get_info_dot(c),
 		{
 			buttons = buttons,
 			layout = wibox.layout.flex.horizontal
 		},
 		{
 			--minimize dot
-			get_widget(0, 1, 0, c,
+			get_widget(0, 1, 0,
 				awful.button({}, 1, function() 
 					c.focusable = false
 					c.minimized = true
 				end,
-				function() c.focusable = true end)),
+				function() c.focusable = true end),
+				{ dim = 0.3, gray = 0.6, client = c }),
 
 			--maximize dot
-			get_widget(1, 1, 0, c,
+			get_widget(1, 1, 0,
 				awful.button({}, 1, function()
 					c.maximized = not c.maximized
-				end)),
+				end),
+				{ dim = 0.3, gray = 0.6, client = c }),
 
 			--close dot
-			get_widget(1, 0, 0, nil,
+			get_widget(1, 0, 0,
 				awful.button({}, 1, function()
 					c:kill()
-				end)),
+				end),
+				{ dim = 0.3 }),
 
 			layout = wibox.layout.fixed.horizontal
 		},
@@ -192,6 +207,4 @@ end
 
 --connects titlebar to clients
 client.connect_signal("request::titlebars", create_titlebars)
-
-
 
