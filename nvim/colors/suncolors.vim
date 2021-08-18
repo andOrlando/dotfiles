@@ -380,6 +380,10 @@ call HL("luaFuncCall", cyan3, s:none)
 call HL("luaFuncName", cyan3, s:bold)
 
 " }}}
+" Python: {{{
+call HL('pythonDecorator', grn2, s:none)
+call HL('pythonDecoratorName', grn2, s:none)
+" }}}
 
 " Other: {{{
 hi! link csNormal AirlineNa

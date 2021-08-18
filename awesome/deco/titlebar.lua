@@ -2,11 +2,11 @@ local gears = require "gears"
 local awful = require "awful"
 local wibox = require "wibox"
 local naughty = require "naughty"
-local xresources = require "beautiful.xresources"
-local dpi = xresources.apply_dpi
-local awestore = require "awestore"
-local interpolate = require("lib.interpolate").interpolate
-local tooltip = require "lib.tooltip"
+local rubato = require "lib.rubato"
+local cairo = require("lgi").cairo
+local beautiful = require "beautiful"
+local dpi = beautiful.xresources.apply_dpi
+
 
 --- Draw a circle.
 -- @param cr cairo, given by draw
@@ -38,9 +38,6 @@ end
 
 --- Get a circular widget.
 -- TODO: memoize colors: https://www.lua.org/pil/17.1.html
--- @param r the red value [0, 1]
--- @param g the green value [0, 1]
--- @param b the blue value [0, 1]
 -- @param buttons list of `awful.button`s
 -- @param[opt] args, list of arguments
 --     @field gray the amount to gray it by [0, 1], needs client
@@ -66,24 +63,30 @@ local function get_widget(r, g, b, buttons, args)
 
 	if not args then return w end
 
+	local d_rgb = {r=0, g=0, b=0, dim=0} --change in rgb/dim
+
 	-- dimming and animation
 	if args.dim then
-		w.d_rgb = {r=0, g=0, b=0, dim=0} --change in rgb/dim
 		
 		--dim interpolator
-		w.dim_intp = interpolate({ slope = 0.045 })
+		local dim_timed = rubato.timed { 
+			intro = 0.1,
+			duration = 0.3,
+			easing = rubato.zero
 
-		table.insert(w.dim_intp.subscribed, function(pos)
-			w.d_rgb.dim = pos
+		}
+
+		dim_timed:subscribe(function(pos)
+			d_rgb.dim = pos
 			update_rgb(w, 
-				r + w.d_rgb.dim + w.d_rgb.r,
-				g + w.d_rgb.dim + w.d_rgb.g,
-				b + w.d_rgb.dim + w.d_rgb.b
+				r + d_rgb.dim + d_rgb.r,
+				g + d_rgb.dim + d_rgb.g,
+				b + d_rgb.dim + d_rgb.b
 			)
 		end)
 
-		w:connect_signal("mouse::enter", function() w.dim_intp:set(-args.dim) end)
-		w:connect_signal("mouse::leave", function() w.dim_intp:set(0) end)
+		w:connect_signal("mouse::enter", function() dim_timed:set(-args.dim) end)
+		w:connect_signal("mouse::leave", function() dim_timed:set(0) end)
 	end
 
 	--graying and animation
@@ -91,23 +94,89 @@ local function get_widget(r, g, b, buttons, args)
 		assert(args.client, "if you want gray, specify a client c")
 
 		--gray interpolator 
-		w.gray_intp = interpolate({ slope = 0.1 })
+		local gray_timed = rubato.timed {
+			intro = 0.1,
+			duration = 0.3,
+			pos = 1,
+			easing = rubato.zero
+		}
 
-		table.insert(w.gray_intp.subscribed, function(pos)
-			w.d_rgb.r = (args.gray - r) * pos
-			w.d_rgb.g = (args.gray - g) * pos
-			w.d_rgb.b = (args.gray - b) * pos
+		gray_timed:subscribe(function(pos)
+			d_rgb.r = (args.gray - r) * pos
+			d_rgb.g = (args.gray - g) * pos
+			d_rgb.b = (args.gray - b) * pos
 			update_rgb(w, 
-				r + w.d_rgb.dim + w.d_rgb.r,
-				g + w.d_rgb.dim + w.d_rgb.g,
-				b + w.d_rgb.dim + w.d_rgb.b
+				r + d_rgb.dim + d_rgb.r,
+				g + d_rgb.dim + d_rgb.g,
+				b + d_rgb.dim + d_rgb.b
 			)
 		end)
 
-		args.client:connect_signal("focus", function() w.gray_intp:set(0) end)
-		args.client:connect_signal("unfocus", function() w.gray_intp:set(1) end)
+		args.client:connect_signal("focus", function() gray_timed:set(0) end)
+		args.client:connect_signal("unfocus", function() gray_timed:set(1) end)
 	end
 		
+	return w
+end
+
+--beautiful.bg_normal colors as floats from 0 to 1
+local rgb = {
+	r = tonumber("0x"..beautiful.bg_normal:sub(2, 3)) / 256,
+	g = tonumber("0x"..beautiful.bg_normal:sub(4, 5)) / 256,
+	b = tonumber("0x"..beautiful.bg_normal:sub(6, 7)) / 256
+}
+
+--- Gets the middle widget
+-- @see create_titlebars
+local function get_middle_widget(c)
+
+	local w = wibox.widget {
+		{
+			wibox.widget {
+				markup = c.class,
+				widget = wibox.widget.textbox
+			},
+			left = dpi(15),
+			widget = wibox.container.margin
+		},
+		{
+			fit = function(self, context, width, height)
+				return width, height
+			end,
+
+			draw = function(self, context, cr, width, height)
+				local pattern = cairo.LinearPattern(0, 0, height * 0.5, 0)
+				pattern:add_color_stop_rgba(0, rgb.r, rgb.g, rgb.b, 1)
+				pattern:add_color_stop_rgba(1, rgb.r, rgb.g, rgb.b, 0)
+				cr:rectangle(0, 0, height * 0.5, height)
+				cr:set_source(pattern)
+				cr:fill()
+			end,
+
+			widget = wibox.widget.base.make_widget
+		},
+
+		
+		layout = wibox.layout.stack
+	}
+
+	local width, height = w.children[1].widget:get_preferred_size()
+
+	local timed = rubato.timed {
+		prop_intro = true,
+		intro = 0.5,
+		duration = 0.25,
+		pos = -1 * width
+	}
+
+	timed:subscribe(function(pos)
+		w.children[1].left = pos
+		w.children[1]:emit_signal("widget::redraw_needed")
+	end)
+
+	c:connect_signal("focus", function() timed:set(0.5 * height) end)
+	c:connect_signal("unfocus", function() timed:set(-1 * width) end)
+
 	return w
 end
 
@@ -123,21 +192,27 @@ local function get_info_dot(c)
 		end),
 		{ dim = 0.1 })
 
-	local tt = tooltip.create_tooltip {
-		markup = "hiya"
-	}
-
-	w:connect_signal("mouse::enter", function() 
-		gears.timer {
-			timeout = 0.1,
-			callback = function()
-				print(mouse.current_widget_geometry) 
-			end
-		}:start()
-	end)
+	w:connect_signal("mouse::enter", function() end)
 	w:connect_signal("mouse::leave", function() end)
 	
-	return w
+	--background must be filled for the middle widget to work
+	local b = wibox.widget {
+		fit = function(self, context, width, height)
+			return height, height
+		end,
+		draw = function(self, context, cr, width, height)
+			cr:rectangle(0, 0, height, height)
+			cr:set_source_rgb(rgb.r, rgb.g, rgb.b)
+			cr:fill()
+		end,
+		widget = wibox.widget.base.make_widget
+	}
+		
+	return {
+		b,
+		w,
+		layout = wibox.layout.stack
+	}
 end
 
 --- Create titlebars
@@ -146,34 +221,15 @@ end
 -- @see get_info_dot
 local function create_titlebars(c)
 
-	--creates buttons for dragging
-	local buttons = gears.table.join(
-		awful.button({}, 1, function()
-			c:emit_signal("request::activate", "titlebar", {raise = true})
-			awful.mouse.client.move(c)
-		end),
-		awful.button({}, 3, function()
-			c:emit_signal("request::activate", "titlebar", {raise = true})
-			awful.mouse.client.resize(c)
-		end)
-	)
-
-		
-	--creates titlebar
-	awful.titlebar(c, {size=dpi(22)}) : setup {
-		--[[{
-			create_name_widget(c),
-			margins = dpi(2),
-			top = dpi(3),
-			left = dpi(4),
-			buttons = buttons,
-			widget = wibox.container.margin
-		},]]
-		get_info_dot(c),
-		{
-			buttons = buttons,
-			layout = wibox.layout.flex.horizontal
+	--has two layers so that I can have the fade out animation
+	--the top layer has the blue dot and it's opaque background
+	--the bottom layer has everything else
+	local bottom_layer = {
+		{ --dummy space-taking widget
+			fit = function(_, _, w, h) return h, h end,
+			widget = wibox.widget.base.make_widget
 		},
+		get_middle_widget(c),
 		{
 			--minimize dot
 			get_widget(0, 1, 0,
@@ -200,8 +256,39 @@ local function create_titlebars(c)
 
 			layout = wibox.layout.fixed.horizontal
 		},
-		forced_height = dpi(25),
 		layout = wibox.layout.align.horizontal
+	}
+
+	--top layer has the draggable stuff
+	local top_layer = {
+		get_info_dot(c),
+		{
+			fit = function(_, _, w, h) return w, h end,
+			widget = wibox.widget.base.make_widget,
+
+			buttons = gears.table.join(
+				awful.button({}, 1, function()
+					c:emit_signal("request::activate", "titlebar", {raise = true})
+					awful.mouse.client.move(c)
+				end),
+				awful.button({}, 3, function()
+					c:emit_signal("request::activate", "titlebar", {raise = true})
+					awful.mouse.client.resize(c)
+				end)),
+	 
+		},
+		{
+			fit = function(_, _, w, h) return h * 3, h end,
+			widget = wibox.widget.base.make_widget
+		},
+		layout = wibox.layout.align.horizontal
+	}
+
+	--creates titlebar
+	awful.titlebar(c, {size=dpi(22)}) : setup {
+		bottom_layer,
+		top_layer,
+		layout = wibox.layout.stack
 	}
 end
 

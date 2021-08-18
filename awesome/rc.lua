@@ -2,38 +2,49 @@
 -- found (e.g. lgi). If LuaRocks is not installed, do nothing.
 pcall(require, "luarocks.loader")
 
-local gears = require("gears")
-local awful = require("awful")
-require("awful.autofocus")
-local wibox = require("wibox")
-local beautiful = require("beautiful")
-local naughty = require("naughty")
-local menubar = require("menubar")
-local hotkeys_popup = require("awful.hotkeys_popup")
-require("awful.hotkeys_popup.keys")
 
-require("main.error-handling") --error handling
+-- Important libraries
+local awful = require "awful"
+local beautiful = require "beautiful"
+local menubar = require "menubar" --TODO: remove
+local vars = require "main.variables"
 
-local vars = require("main.variables") --vars
+-- Reloaded config message
+awful.spawn "notify-send 'reloaded config' nice"
 
---initializes theme
-beautiful.init(gears.filesystem.get_xdg_config_home() ..
+-- Set up awful stuff
+require "awful.hotkeys_popup"
+require "awful.hotkeys_popup.keys"
+require "awful.autofocus"
+
+-- Set up error handling
+require "main.error-handling" 
+
+-- Set up battery and volume signals (thanks JavaCafe01)
+require "lib.battery"
+require "lib.volume"
+
+-- Initializes theme
+beautiful.init(require("gears").filesystem.get_xdg_config_home() ..
 	"awesome/themes/" .. vars.theme .. "/theme.lua")
 
-local mymainmenu = require("deco.menu") --shitty menu
+-- Shitty menu TODO: remove
+local mymainmenu = require("deco.menu") 
 
--- does the thing for the menubar
+-- Does the thing for the menubar (still remove)
 menubar.utils.terminal = vars.terminal 
 
-require("deco.screens")
-require("deco.titlebar")
+-- Sets up deco stuff
+require "deco.screens"
+require "deco.titlebar"
 
-require("binding.bindings_mouse")
-require("binding.bindings_key")
+-- Sets up binding stuff
+require "binding.bindings_mouse"
+require "binding.bindings_key"
 
 -- picom
-awful.spawn("killall picom")
-awful.spawn("picom")
+awful.spawn.once "picom"
+
 
 -- {{{ Rules
 awful.rules.rules = {
@@ -193,46 +204,3 @@ client.connect_signal("focus", function(c) c.border_color = beautiful.border_foc
 client.connect_signal("unfocus", function(c) c.border_color = beautiful.border_normal end)
 -- }}}
 
--- TESTING
-local interpolate = require("lib.interpolate")
-
-local lesgo = interpolate.timed {
-	duration = 1,
-	--intro = 1,
-	--outro = 1,
-	rate = 3,
-	--pos = 2,
-	--easing = interpolate.quadratic,
-	subscribed = function(pos, time, dx)
-		print(tostring(pos))
-	end
-}
-
-local popup = awful.popup {
-	widget = {
-		{
-			text = "click me",
-			widget = wibox.widget.textbox,
-			buttons = awful.button({}, 1, function()
-				if lesgo:is_started() then
-					print("stopped")
-					lesgo:abort()
-				else
-					print("\nstarted")
-					lesgo:set(2)
-				end
-			end)
-		},
-		margins = 10,
-		widget = wibox.container.margin
-	},
-	x = 10, y = 50,
-	border_width = 0,
-	shape = gears.shape.rounded_rect,
-	visible = true
-}
-popup.visible = false
-
-local tooltip = require("lib.tooltip")
-local tt = tooltip.create_tooltip {}
-tt:set_opacity(0.3)

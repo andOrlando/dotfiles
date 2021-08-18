@@ -67,14 +67,11 @@ if &term =~ 'kitty'
 endif
 
 
-"function for colors
-"syn include syntax/vim-coloresque.vim
-
 "does color highlighting
-"fun! Colors()
-	"syn include syntax/vim-coloresque.vim
-	"syn sync fromstart
-"endfun
+fun! Colors()
+	syn include syntax/css/vim-coloresque.vim
+	syn sync fromstart
+endfun
 
 "gets the syntax and stuff of the thing under the cursor
 fun! GetSyn()
@@ -105,21 +102,26 @@ setl fdm=marker
 "au BufNewFile,BufRead *.c,*.js, setl fdm=syntax
 let s:syntax = ["c", "javascript", "lua"]
 fun Dothething()
-	if index(s:syntax, &filetype) != -1
+	echo "did the thing"
+	if index(s:syntax, &filetype) >= 0
 		setl fdm=syntax 
 	endif
 endfun
 
-au BufNewFile,BufRead * call Dothething()
+aug folding 
+	au BufNewFile,BufRead * exe "call Dothething()"
+aug END
+
+call Dothething()
 " }}}
 " Mapping: {{{
-inoremap <C-Space> <C-x><C-o>
-nmap <C-b> <C-o>:call ToggleTerm()<CR>
+"inoremap <C-Space> <C-x><C-o>
+nmap <C-b> :ToggleWindowTerminal<CR>
 
 " }}}
 " Completion: {{{
-au FileType c setl ofu=ccomplete#Complete
-au BufNewFile,BufRead,BufEnter *.cpp,*.hpp setl ofu=omni#cpp#complete#Main
+"au FileType c setl ofu=ccomplete#Complete
+"au BufNewFile,BufRead,BufEnter *.cpp,*.hpp setl ofu=omni#cpp#complete#Main
 
 " }}}
 " Tabline: {{{
@@ -299,6 +301,11 @@ Plug 'tpope/vim-fugitive'
 Plug 'preservim/nerdcommenter'
 Plug 'tbastos/vim-lua'
 Plug 'gko/vim-coloresque'
+Plug 'ycm-core/YouCompleteMe'
+Plug 'editorconfig/editorconfig-vim'
+Plug 'AndrewRadev/bufferize.vim'
+Plug 'craigemery/vim-autotag'
+Plug 'pangloss/vim-javascript'
 call plug#end()
 " }}}
 " Vimtex: {{{

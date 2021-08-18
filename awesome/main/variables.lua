@@ -1,11 +1,14 @@
-local awful = require("awful")
+local awful = require "awful" 
+local dpi = require("beautiful.xresources").apply_dpi
 
 -- Variable Definitions: {{{
 local _M = {
 	theme = "suncolors",
 	terminal = "kitty",
 	editor = os.getenv("EDITOR") or "nvim",
-	modkey = "Mod4"
+	modkey = "Mod4",
+	navbar_height = dpi(28),
+	taglist_padding_sides = dpi(8)
 }
 _M.editor_cmd = _M.terminal .. " -e " .. _M.editor
 -- }}}
