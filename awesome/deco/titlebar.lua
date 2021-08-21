@@ -9,20 +9,12 @@ local dpi = beautiful.xresources.apply_dpi
 
 
 --- Draw a circle.
--- @param cr cairo, given by draw
--- @param height height, given by draw
--- @see get_widget
 local function draw_arc(cr, height)
 	cr:arc(height/2, height/2, dpi(5)*0.9, 0, math.pi*2)
 	cr:fill()
 end
 
 --- Udpate the draw function with new colors.
--- @param w widget
--- @param r the red value [0, 1]
--- @param g the green value [0, 1]
--- @param b the blue value [0, 1]
--- @see get_widget
 local function update_rgb(w, r, g, b)
 	w.draw =
 	function(self, context, cr, width, height)
@@ -37,13 +29,6 @@ local function update_rgb(w, r, g, b)
 end
 
 --- Get a circular widget.
--- TODO: memoize colors: https://www.lua.org/pil/17.1.html
--- @param buttons list of `awful.button`s
--- @param[opt] args, list of arguments
---     @field gray the amount to gray it by [0, 1], needs client
---     @field dim the amount to dim it by [0, 1]
---     @field client the client the widget is attatched to
--- @return the circular widget
 local function get_widget(r, g, b, buttons, args)
 	local w = wibox.widget {
 		fit = 
@@ -127,7 +112,6 @@ local rgb = {
 }
 
 --- Gets the middle widget
--- @see create_titlebars
 local function get_middle_widget(c)
 
 	local w = wibox.widget {
@@ -181,9 +165,6 @@ local function get_middle_widget(c)
 end
 
 --- Get info dot widget.
--- @param c the client
--- @return the info dot
--- @see get_widget
 local function get_info_dot(c)
 
 	local w = get_widget(0.5, 0.5, 1, 
@@ -216,9 +197,6 @@ local function get_info_dot(c)
 end
 
 --- Create titlebars
--- @param c client
--- @see get_widget
--- @see get_info_dot
 local function create_titlebars(c)
 
 	--has two layers so that I can have the fade out animation

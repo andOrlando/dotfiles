@@ -7,12 +7,10 @@ local _M = {
 	terminal = "kitty",
 	editor = os.getenv("EDITOR") or "nvim",
 	modkey = "Mod4",
-	navbar_height = dpi(28),
-	taglist_padding_sides = dpi(8)
+	navbar_height = dpi(40),
+	taglist_padding_sides = dpi(10)
 }
 _M.editor_cmd = _M.terminal .. " -e " .. _M.editor
--- }}}
--- Layout Format {{{
 awful.layout.layouts = {
 	awful.layout.suit.floating,
 	awful.layout.suit.tile,
@@ -31,5 +29,4 @@ awful.layout.layouts = {
 	-- awful.layout.suit.corner.sw,
 	-- awful.layout.suit.corner.se,
 }
--- }}}
 return _M

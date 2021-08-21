@@ -14,31 +14,19 @@ local function round(x, p)
 	return (x * power + 0.5 - (x * power + 0.5) % 1) / power 
 end
 
---- useful color constants TODO: put this in variables
-local ia_rgb = color.color {hex=beautiful.gray}		 --inactive color
-local a_rgb = color.color {hex=beautiful.light_gray} --active color
-local u_rgb = color.color {hex=beautiful.bg_urgent}	 --urgent color
-local s_rgb = color.color {hex=beautiful.light_blue} --slidey color
+--- useful color constants
+local ia_rgb = color.color {hex=beautiful.gray, disable_hsl=true}	   --inactive color
+local a_rgb = color.color {hex=beautiful.light_gray, disable_hsl=true} --active color
+local u_rgb = color.color {hex=beautiful.bg_urgent, disable_hsl=true}  --urgent color
+local s_rgb = color.color {hex=beautiful.light_blue, disable_hsl=true} --slidey color
 
+-- Calculate the diff in colors for some stuff later on
 local diff = {}
 diff.r = ia_rgb.r - a_rgb.r
 diff.g = ia_rgb.g - a_rgb.g
 diff.b = ia_rgb.b - a_rgb.b
 
--- Sets wallpaper
-local function set_wallpaper(s) 
-	local wallpaper = beautiful.wallpaper
-	if type(wallpaper) == "function" then
-		gears.wallpaper.maximized(wallpaper(s), s, true)
-	elseif not (wallpaper == nil) then
-		gears.wallpaper.maximized(wallpaper, s, true)
-	end
-end
-
-screen.connect_signal("property::geometry", set_wallpaper)
-
---- Draws a hollow arc
--- ipos and fpos are optional
+--- Draws a hollow arc (unused)
 local function draw_arc(cr, height, ipos, fpos)
 	--assert to constrain ipos and fpos
 	assert(ipos <= 1 and ipos >= 0 and ipos <= 1 and fpos >= 0, 
@@ -49,20 +37,7 @@ local function draw_arc(cr, height, ipos, fpos)
 	cr:stroke()
 end
 
---- Draws a circle
-local function draw_circle(cr, height)
-	cr:arc(height/2, height/2, 6, 0, math.pi * 2)
-	cr:fill()
-end
-
-
---- Draws the slidey thing
-local function draw_slidey_thing(cr, height, xpos)
-	cr:arc(xpos, height/2, 6, 0, math.pi*2)
-	cr:fill()
-end
-
---- Makes a halo widget (old)
+--- Makes a halo widget (unused)
 local function make_halo_widget(r, g, b, a, init)
 	--r, g, b, a are colors from [0, 1]
 	--init is initial position [0, 1] for arc
@@ -76,6 +51,18 @@ local function make_halo_widget(r, g, b, a, init)
 		end,
 		layout = wibox.widget.base.make_widget	
 	}
+end
+
+--- Draws a circle
+local function draw_circle(cr, height)
+	cr:arc(height/2, height/2, 6, 0, math.pi * 2)
+	cr:fill()
+end
+
+--- Draws the slidey thing
+local function draw_slidey_thing(cr, height, xpos)
+	cr:arc(xpos, height/2, 6, 0, math.pi*2)
+	cr:fill()
 end
 
 --- Makes a circle widget
@@ -92,6 +79,7 @@ local function make_circle_widget(color)
 	}
 end
 
+--- Updates RGB for the taglist (to allow for hover)
 local function update_rgb(w, rgb, diff)
 	local r = (rgb.r + diff.ar + diff.ur) * diff.dim
 	local g = (rgb.g + diff.ag + diff.ug) * diff.dim
@@ -105,13 +93,11 @@ local function update_rgb(w, rgb, diff)
 end
 
 --- Creates the taglist widgets.
--- @see create_slidey_thing
--- @see create_navbar
-local function create_taglist_widgets(s)
+local function create_taglist_widgets(s, slidey_thing)
 
 	local l = {layout = wibox.layout.fixed.horizontal}
 
-	for _, t in pairs(s.tags) do
+	for i, t in pairs(s.tags) do
 
 		local w = make_circle_widget(ia_rgb)
 		w.buttons = awful.button({}, 1,
@@ -169,8 +155,19 @@ local function create_taglist_widgets(s)
 			else urgent_timed:set(0) end
 		end)
 
-		w:connect_signal("mouse::enter", function() hover_timed:set(1) end)
-		w:connect_signal("mouse::leave", function() hover_timed:set(0) end)
+		w:connect_signal("mouse::enter", function() 
+			--look, I know this isn't by any means idiomatic, but it's either this or 
+			--have a signal for every single one of the taglist widgets, which I really
+			--don't want to do. So random variable put in tag it is.
+			t.is_being_hovered = true
+			hover_timed:set(1) 
+			if s.selected_tag == t then slidey_thing:hover(1) end
+		end)
+		w:connect_signal("mouse::leave", function() 
+			t.is_being_hovered = false
+			hover_timed:set(0) 
+			if s.selected_tag == t then slidey_thing:hover(0) end
+		end)
 
 		table.insert(l, w)
 	end
@@ -184,6 +181,7 @@ local function create_taglist_widgets(s)
 	}]]
 end
 
+--- Updates the position of the slidey thing
 local function update_slidey_thing(w, dim, pos)
 	w.draw =
 	function(self, context, cr, width, height)
@@ -195,8 +193,6 @@ local function update_slidey_thing(w, dim, pos)
 end
 
 --- Creates the slidey thing in the workspace switcher.
--- @see create_taglist_widgets
--- @see create_navbar
 local function create_slidey_thing(s)
 	local w = wibox.widget {
 		fit = function(self, cocntext, width, height)
@@ -213,6 +209,7 @@ local function create_slidey_thing(s)
 
 	local index = 1
 
+	-- Bouncy easing if I so please
 	--[[local timed = rubato.timed {
 		duration = 0.85,
 		intro = 0.25,
@@ -256,25 +253,31 @@ local function create_slidey_thing(s)
 
 		timed:set(ti[s.selected_tag])
 		index = ti[s.selected_tag]
+
+		hover_timed:set(s.selected_tag.is_being_hovered and 1 or 0)
 	end)
 
-	w:connect_signal("mouse::enter", function() hover_timed:set(1) end)
-	w:connect_signal("mouse::leave", function() hover_timed:set(0) end)
+	function w:hover(value) hover_timed:set(value) end
+
+	--[[w:connect_signal("mouse::enter", function() hover_timed:set(1) end)
+	w:connect_signal("mouse::leave", function() hover_timed:set(0) end)]]
 
 	return w
 end
 
-local green = color.color {r=97, g=232, b=87}
-local red = color.color {r=232, g=87, b=87}
-
+local full = color.color {r=60, g=131, b=242}
+local empty = color.color {r=89, g=0, b=175}
 
 --- Create the battery widget
 local function create_battery_widget()
 	
 	local w = wibox.widget {
-		markup = "<span font='9'></span>",
 		align = "center",
 		widget = wibox.widget.textbox
+	}
+
+	local w = wibox.widget {
+		widget = wibox.widget.imagebox
 	}
 
 	local a = wibox.widget {
@@ -287,82 +290,72 @@ local function create_battery_widget()
 		widget = wibox.container.arcchart
 	}
 
-	local l = wibox.widget {
-		a,
-		top = 2,
-		bottom = 2,
-		widget = wibox.container.margin
-	}
-
 	awesome.connect_signal("signal::battery", function(percentage, state)
 
 		-- Do charging state
-		local markup = "<span font='9'>"
+		--local markup = "<span font='11'>"
 
 		-- 4 is charging at full, 2 is not charging, 1 is charging and not at full
-		if state == 4.0 or state == 1.0 then markup = markup .. ""
+		if state == 4.0 or state == 1.0 then w.image = beautiful.battery_charging 
 
 		elseif state == 2.0 then
-			if percentage >= 95 then markup = markup .. ""
-			elseif percentage >= 85 then markup = markup .. ""
-			elseif percentage >= 75 then markup = markup .. ""
-			elseif percentage >= 65 then markup = markup .. ""
-			elseif percentage >= 55 then markup = markup .. ""
-			elseif percentage >= 45 then markup = markup .. ""
-			elseif percentage >= 35 then markup = markup .. ""
-			elseif percentage >= 25 then markup = markup .. ""
-			elseif percentage >= 15 then markup = markup .. ""
-			elseif percentage >= 5 then markup = markup .. ""
-			else markup = markup .. "" end
+			if percentage >= 95 then w.image = beautiful.battery_full
+			elseif percentage >= 85 then w.image = beautiful.battery_90
+			elseif percentage >= 75 then w.image = beautiful.battery_80
+			elseif percentage >= 65 then w.image = beautiful.battery_70
+			elseif percentage >= 55 then w.image = beautiful.battery_60
+			elseif percentage >= 45 then w.image = beautiful.battery_50
+			elseif percentage >= 35 then w.image = beautiful.battery_40
+			elseif percentage >= 25 then w.image = beautiful.battery_30
+			elseif percentage >= 15 then w.image = beautiful.battery_20
+			elseif percentage >= 5 then w.image = beautiful.battery_10 
+			else w.image = beautiful.battery_low end
 
-		else markup = markup .. "?" end
+		else  w.image = beautiful.battery_unknown end
 		
-		markup = markup .. "</span>"
-		w.markup = markup
+		--[[markup = markup .. "</span>"]]
+		--[[w.markup = markup]]
 			
 		-- Set percentage and color
 		a.value = percentage
-		a.colors = {"#"..color.rgb_to_hex{
-			r=red.r + (green.r - red.r) * percentage / 100,
-			g=red.g + (green.g - red.g) * percentage / 100,
-			b=red.b + (green.b - red.b) * percentage / 100
+		a.colors = {color.rgb_to_hex {
+			empty.r + (full.r - empty.r) * percentage / 100,
+			empty.g + (full.g - empty.g) * percentage / 100,
+			empty.b + (full.b - empty.b) * percentage / 100,
+			true
 		}}
 
 		a:emit_signal("widget::redraw_needed")
 	end)
 
 
-	return l
+	return a
 end
+
+local green = color.color {r=97, g=232, b=87, disable_hsl=true}
+local red = color.color {r=232, g=87, b=87, disable_hsl=true}
 
 local last_color = color.color {r=232, g=87, b=87}
 local next_color = color.color {r=232, g=87, b=87}
 last_color.h = last_color.h - 40
 
 local function create_volume_widget()
-	local w = wibox.widget {
-		markup = "墳",
+	--[[local w = wibox.widget {
 		align = "center",
 		widget = wibox.widget.textbox
+	}]]
+
+	local w = wibox.widget {
+		widget = wibox.widget.imagebox
 	}
 
 	local a = wibox.widget {
 		w,
 		min_value = 0,
 		max_value = 100,
-		value = 100,
-		start_angle = 1.5 * math.pi,
-		border_width = 0,
+		start_angle = 1.43 * math.pi,
 		rounded_edge = true,
-		colors = {beautiful.light_gray},
 		widget = wibox.container.arcchart
-	}
-
-	local l = wibox.widget {
-		a,
-		top = 2,
-		bottom = 2,
-		widget = wibox.container.margin
 	}
 
 	local prev_pos = 0
@@ -374,12 +367,11 @@ local function create_volume_widget()
 	}
 
 	arc_timed:subscribe(function(pos)
-		pos = round(pos, 5)
+		pos = round(pos, 5) --rounding because float math sucks
 
 		local value
 
 		--If it's zero just display as blank and quit
-		--weirdness because goddamn floats
 		if pos == 0 then 
 			a.colors = {"#ffffff00"} 
 			return 
@@ -390,29 +382,36 @@ local function create_volume_widget()
 		
 		a.value = 7.5 + value * 0.925
 
+		-- For stuf above 200 just increase hue
 		if prev_pos > 200 or pos > 200 then 
 			local closest_hundred = round(pos, -2)
 			if pos > closest_hundred and prev_pos <= closest_hundred then
-				naughty.notify {text="above"..pos.." ".. closest_hundred.." "..prev_pos}
 				last_color.h = last_color.h + 40
 				next_color.h = next_color.h + 40
 			elseif pos <= closest_hundred and prev_pos > closest_hundred then
-				naughty.notify {text="below"..pos.." ".. closest_hundred.." "..prev_pos}
 				last_color.h = last_color.h - 40
 				next_color.h = next_color.h - 40
 			end
-			a.bg = "#"..last_color.hex
-			a.colors = {"#"..next_color.hex}
+
+			-- Do cool transition
+			a.bg = last_color.hex
+			a.colors = {color.rgb_to_hex{
+				last_color.r + (next_color.r - last_color.r) * value / 100,
+				last_color.g + (next_color.g - last_color.g) * value / 100,
+				last_color.b + (next_color.b - last_color.b) * value / 100,
+				true
+			}}
 		end
 
 		if 200 > pos and pos > 100 then
 			a.bg = beautiful.light_gray
-			a.colors = {"#"..color.rgb_to_hex{
-				r=green.r + (red.r - green.r) * value / 100,
-				g=green.g + (red.g - green.g) * value / 100,
-				b=green.b + (red.b - green.b) * value / 100
+			a.colors = {color.rgb_to_hex{
+				green.r + (red.r - green.r) * value / 100,
+				green.g + (red.g - green.g) * value / 100,
+				green.b + (red.b - green.b) * value / 100,
+				true
 			}}
-		elseif pos < 100 then
+		elseif pos <= 100 then
 			a.bg = nil
 			a.colors = {beautiful.light_gray}
 		end
@@ -425,42 +424,149 @@ local function create_volume_widget()
 
 		arc_timed:set(percentage)
 
-		local markup = "<span font='10'>"
+		--local markup = "<span font='17'>"
 
-		if muted then markup = markup .. "婢"
-		else markup = markup .. "墳" end
+		if muted then w.image = beautiful.volume_mute
+		elseif percentage >= 75 then w.image = beautiful.volume_high
+		elseif percentage >= 25 then w.image = beautiful.volume_mid
+		else w.image = beautiful.volume_low 
+		end
 
-		markup = markup .. "</span>"
-		w.markup = markup
+		--markup = markup .. "</span>"
+		--w.markup = markup
 	end)
 
-	return l
+	return a
 end
 
-local function create_minimized_widget(s) --TODO
+local hour_color = color.color {r=50, g=0, b=100, disable_hsl=true}
+local min_color = color.color {r=89, g=0, b=175, disable_hsl=true}
+local sec_color = color.color {r=60, g=131, b=242, disable_hsl=true}
 
-	local l = wibox.widget { layout = wibox.layout.fixed.horizontal }
-	table.insert(l.children, make_circle_widget {r=1, g=1, b=1})
+local function create_cool_clock_widget()
+	local time = os.time()
+	local sec, min, hour = os.date("%S", time), os.date("%M", time), os.date("%H") % 12
 
-	client.connect_signal("property::minimized", function()
-		table.insert(l.children, make_circle_widget {r=1, g=1, b=1})
-		l:emit_signal("widget::redraw_needed")
-		--[[for _, t in pairs(s.tags) do
-			for _, c in pairs(t:clients()) do
-				if c.minimized then
-					print("hi")
-					table.insert(l.children, make_circle_widget {r=1, g=1, b=1})
-				end
+	local a1 = wibox.widget {
+		min_value = 0,
+		max_value = 100,
+		start_angle = 1.42 * math.pi,
+		rounded_edge = true,
+		bg = "#ffffff00",
+		colors = {sec_color.hex},
+		widget = wibox.container.arcchart
+	}
+
+	local a2 = wibox.widget {
+		a1,
+		min_value = 0,
+		max_value = 100,
+		start_angle = 1.42 * math.pi,
+		rounded_edge = true,
+		bg = "#ffffff00",
+		colors = {min_color.hex},
+		widget = wibox.container.arcchart
+	}
+
+	local a3 = wibox.widget {
+		a2,
+		min_value = 0,
+		max_value = 100,
+		start_angle = 1.42 * math.pi,
+		rounded_edge = true,
+		bg = "#ffffff10",
+		colors = {hour_color.hex},
+		widget = wibox.container.arcchart
+	}
+
+	local a1_timed = rubato.timed {
+		duration = 2, intro = 0.3, prop_intro = true,
+		subscribed = function(pos) a1.value = 15+pos/59*100*0.85 end
+	}
+	local a2_timed = rubato.timed {
+		duration = 4, intro = 0.3, prop_intro = true,
+		subscribed = function(pos) a2.value = 11.25+pos/59*100*0.8975 end
+	}
+	local a3_timed = rubato.timed {
+		duration = 6, intro = 0.4, prop_intro = true,
+		subscribed = function(pos) a3.value = 7.5+pos/11*100*0.925 end
+	}
+
+	local timer = gears.timer {timeout = 1}
+	timer:connect_signal("timeout", function()
+		-- Do time stuff
+		sec = sec + 1
+		if sec == 60 then
+			sec = 0
+			min = min + 1
+			if min == 60 then
+				min = 0
+				hour = (hour + 1) % 12
 			end
-			l:emit_signal("widget::redraw_needed")
-		end]]
+		end
+
+		-- Update circles
+		a1_timed:set(sec)
+		a2_timed:set(min)
+		a3_timed:set(hour)
 	end)
 
-	return l
+	timer:start()
+
+	return a3
+end
+
+local function create_tasklist_widget(s) --TODO
+	local w = awful.widget.tasklist {
+		screen = s,
+		filter = awful.widget.tasklist.filter.currenttags,
+		buttons = tasklist_buttons,
+		layout = {
+			--[[spacing_widget = {
+				{
+					forced_width  = 5,
+					forced_height = 24,
+					thickness     = 1,
+					color         = '#777777',
+					widget        = wibox.widget.separator
+				},
+				valign = 'center',
+				halign = 'center',
+				widget = wibox.container.place,
+			},
+			spacing = 1,]]
+			layout  = wibox.layout.fixed.vertical
+		},
+		-- Notice that there is *NO* wibox.wibox prefix, it is a template,
+		-- not a widget instance.
+		widget_template = {
+			--[[{
+				wibox.widget.base.make_widget(),
+				forced_height = 5,
+				id            = 'background_role',
+				widget        = wibox.container.background,
+			},]]
+			{
+				{
+					id     = 'clienticon',
+					widget = awful.widget.clienticon,
+				},
+				margins = 6,
+				widget  = wibox.container.margin
+			},
+			--nil,
+			create_callback = function(self, c, index, objects) --luacheck: no unused args
+				self:get_children_by_id('clienticon')[1].client = c
+			end,
+			layout = wibox.layout.align.vertical,
+		},
+	}
+	
+	return w
 end
 
 
-local function create_navbar(s)
+local function create_top_navbar(s)
 
 	local above_taglist = {layout = wibox.layout.fixed.horizontal}
 
@@ -474,40 +580,112 @@ local function create_navbar(s)
 		})
 	end
 
-	local tasklist = awful.widget.tasklist {
-		screen = s,
-		filter = awful.widget.tasklist.filter.allscreen,
-		layout = {
-			layout  = wibox.layout.fixed.horizontal
-		},
-		widget_template = {
-			{
-				{
-					id = 'clienticon',
-					widget = awful.widget.clienticon,
-				},
-				margin = 10,
-				widget = wibox.container.margin
-			},
-			nil,
-			create_callback = function(self, c, index, objects)
-				self:get_children_by_id('clienticon')[1].client = c
-			end,
-			layout = wibox.layout.align.vertical,
-		},
-	}
+	--- Create the slidey thing beforehand as to pass it into the taglist widgets
+	local slidey_thing = create_slidey_thing(s)
 
 	-- create wibar
-    s.top_navbar = awful.wibar({ 
+    --[[s.top_navbar = awful.wibar {
 		position = "top", 
 		screen = s, 
 		height = variables.navbar_height
-	})
+	}]]
+
+	s.top_navbar = awful.popup {
+		widget = {	{	{	{	{	create_taglist_widgets(s, slidey_thing),
+							slidey_thing,
+							above_taglist,
+							layout = wibox.layout.stack
+						},
+						left = variables.taglist_padding_sides,
+						right = variables.taglist_padding_sides,
+						layout = wibox.container.margin
+					},
+					bg = beautiful.bg_normal_1,
+					shape = gears.shape.rounded_bar,
+					shape_clip = true,
+					layout = wibox.container.background
+				},
+				margins = dpi(6),
+				layout = wibox.container.margin
+			},
+
+			--- Middle (empty for now)
+			wibox.widget {},
+
+			--- Right
+			{	{	create_cool_clock_widget(),
+					create_battery_widget(),
+					create_volume_widget(),
+					spacing = dpi(6),
+					layout = wibox.layout.fixed.horizontal
+				},
+				margins = dpi(4),
+				layout = wibox.container.margin
+			},
+			layout = wibox.layout.align.horizontal,
+		},
+		screen = s,
+		minimum_height = variables.navbar_height,
+		maximum_height = variables.navbar_height,
+		minimum_width = s.geometry.width,
+		maximum_width = s.geometry.width,
+		bg = beautiful.bg_normal
+
+	}
+
+	s.top_navbar:struts {
+		bottom = 0, left = 0, right = 0,
+		top = 40
+	}
+
+
+
+	naughty.notify {text=s.geometry.width.." "}
+
+	--[[s.top_navbar = awful.popup {
+		widget = {	{	{	{	{	create_taglist_widgets(s, slidey_thing),
+							slidey_thing,
+							above_taglist,
+							layout = wibox.layout.stack
+						},
+						left = variables.taglist_padding_sides,
+						right = variables.taglist_padding_sides,
+						layout = wibox.container.margin
+					},
+					bg = beautiful.bg_normal_1,
+					shape = gears.shape.rounded_bar,
+					shape_clip = true,
+					layout = wibox.container.background
+				},
+				margins = dpi(6),
+				layout = wibox.container.margin
+			},
+
+			--- Middle (empty for now)
+			wibox.widget {},
+
+			--- Right
+			{	{	create_cool_clock_widget(),
+					create_battery_widget(),
+					create_volume_widget(),
+					spacing = dpi(6),
+					layout = wibox.layout.fixed.horizontal
+				},
+				margins = dpi(4),
+				layout = wibox.container.margin
+			},
+			layout = wibox.layout.align.horizontal,
+		},
+		screen = s,
+		height = variables.navbar_height,
+		width = s.geometry.width
+	}]]
 
 	--wibar setup
-	s.top_navbar:setup {
-		{	{	{	{	create_taglist_widgets(s),
-						create_slidey_thing(s),
+	--[[s.top_navbar:setup {
+		--- Left
+		{	{	{	{	create_taglist_widgets(s, slidey_thing),
+						slidey_thing,
 						above_taglist,
 						layout = wibox.layout.stack
 					},
@@ -520,22 +698,67 @@ local function create_navbar(s)
 				shape_clip = true,
 				layout = wibox.container.background
 			},
+			margins = dpi(6),
+			layout = wibox.container.margin
+		},
+
+		--- Middle (empty for now)
+		wibox.widget {},
+
+		--- Right
+		{	{	create_cool_clock_widget(),
+				create_battery_widget(),
+				create_volume_widget(),
+				spacing = dpi(6),
+				layout = wibox.layout.fixed.horizontal
+			},
 			margins = dpi(4),
 			layout = wibox.container.margin
 		},
-		wibox.widget.textclock("%H:%M"),
-		{
-			create_battery_widget(),
-			create_volume_widget(),
-			layout = wibox.layout.fixed.horizontal
-		},
-		--create_minimized_widget(s),
-		--tasklist,
 		layout = wibox.layout.align.horizontal,
-	}
+	}]]
+
+	--[[for k, v in pairs(s.top_navbar:struts()) do
+		naughty.notify {text=k.." "..v}
+	end
+
+	s.top_navbar:struts {
+		left = 0,
+		right = 0,
+		top = 0,
+		bottom = 0
+	}]]
 	
 end
 
+local function create_left_navbar(s)
+	s.left_navbar = awful.wibar {
+		position = "left",
+		screen = s,
+		bg = beautiful.bg_normal.."64",
+		width = dpi(38),
+		ontop = true,
+	}
+
+	s.left_navbar:setup {
+		{	create_tasklist_widget(s),
+			layout = wibox.layout.fixed.vertical
+		},
+		layout = wibox.layout.align.vertical
+	}
+end
+
+-- Sets wallpaper
+local function set_wallpaper(s) 
+	local wallpaper = beautiful.wallpaper
+	if type(wallpaper) == "function" then
+		gears.wallpaper.maximized(wallpaper(s), s, true)
+	elseif not (wallpaper == nil) then
+		gears.wallpaper.maximized(wallpaper, s, true)
+	end
+end
+
+screen.connect_signal("property::geometry", set_wallpaper)
 
 awful.screen.connect_for_each_screen(function(s)
 
@@ -550,7 +773,8 @@ awful.screen.connect_for_each_screen(function(s)
 
 	tag = s.tags[1]:view_only()
 
-	create_navbar(s)
+	create_left_navbar(s)
+	create_top_navbar(s)
 	set_wallpaper(s)
 end)
 

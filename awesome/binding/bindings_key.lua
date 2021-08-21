@@ -16,6 +16,10 @@ globalkeys = gears.table.join(
 		{description="Screenshot to Clipboard", group="Utils"}),
 	awful.key({mk}, "Return", function() awful.spawn(vars.terminal) end,
 		{description="Open Terminal", group="Utils"}),
+	--the old thing was awful.screen.focused().mypromptbox:run()
+	awful.key({mk}, "d", function () os.execute("rofi -modi drun,run -show drun") end,
+		{description="Open ROFI", group="Utils"}),
+
 	awful.key({}, "XF86AudioRaiseVolume", function() awful.spawn("pactl set-sink-volume @DEFAULT_SINK@ +5%") end,
 		{description="Increase Volume", group="Utils"}),
 	awful.key({}, "XF86AudioLowerVolume", function() awful.spawn("pactl set-sink-volume @DEFAULT_SINK@ -5%") end,
@@ -23,8 +27,7 @@ globalkeys = gears.table.join(
 	awful.key({}, "XF86AudioMute", function() awful.spawn("pactl set-sink-mute @DEFAULT_SINK@ toggle") end,
 		{description="Mute Volume", group="Utils"}),
 
-
-
+	
 	--- State
 	awful.key({mk, "Control"}, "r", awesome.restart,
 		{description="Restart Awesome", group="State"}),
@@ -43,7 +46,30 @@ globalkeys = gears.table.join(
 	awful.key({mk, "Shift"}, "j", function() awful.client.swap.byidx(1) end,
 		{description="Increment Focus", group="Windows"}),
 	awful.key({mk, "Shift"}, "k", function() awful.client.swap.byidx(-1) end,
-		{description="Decrement Focus", group="Windows"})
+		{description="Decrement Focus", group="Windows"}),
+
+	--- Layout
+	awful.key({mk}, "h", function() awful.tag.incmwfact(0.05) end,
+		{description="Increase master client width", group="Layout"}),
+	awful.key({mk}, "l", function() awful.tag.incmwfact(-0.05) end,
+		{description="Decrease master client width", group="Layout"}),
+
+	-- TODO: Figure out exactly what this actually does
+	awful.key({mk, "Shift"}, "h", function() awful.tag.incnmaster(1, nil, true) end,
+		{description="Increase number of master clients", group="Layout"}),
+	awful.key({mk, "Shift"}, "l", function() awful.tag.incnmaster(-1, nil, true) end,
+		{description="Decrease number of master clients", group="Layout"}),
+	awful.key({mk, "Control"}, "h", function() awful.tag.incncol(1, nil, true) end,
+		{description="Increase number of columns", group="Layout"}),
+	awful.key({mk, "Control"}, "l", function() awful.tag.incncol(-1, nil, true) end,
+		{description="Decrease number of columns", group="Layout"}),
+
+	-- Client
+	awful.key({mk, "Control"}, "n", function()
+			local c = awful.client.restore()
+			if c then c:emit_signal("request::activate", "key.unminimize", {raise=true}) end
+		end,
+		{description="Unminimize all clients", group="Client"})
 
 	--- Bad ones that are useful to keep around
 	--awful.key({mk}, "Left", awful.tag.viewprev)
@@ -56,45 +82,24 @@ globalkeys = gears.table.join(
 	--		awful.client.focus.history.previous()
 	--		if client.focus then client.focus:raise() end
 	--	end end,) --Goes back one client
+	--awful.key({mk}, "space", function() awful.layout.inc(1) end)
+	--awful.key({mk, "Shift"}, "space" function() awful.layout.inc(-1) end)
 
 )
 
--- {{{ Key bindings
+clientkeys = gears.table.join(
+	awful.key({mk}, "f", function(c) c.maximized = not c.maximized; c:raise() end,
+		{description="Toggle focused client fullscreen", group="Client"}),
+
+	awful.key({mk, "Shift"}, "q", function(c) c:kill() end,
+		{description="Kill focused client", group="Client"}),
+
+	awful.key({mk}, "space", awful.client.floating.toggle,
+		{description="Toggle focused cleint floating", group="Client"})
+)
+
 globalkeys = gears.table.join(globalkeys,
 	
-	awful.key({ vars.modkey, }, "l",	 function () awful.tag.incmwfact( 0.05)		  end,
-			  {description = "increase master width factor", group = "layout"}),
-	awful.key({ vars.modkey, }, "h",	 function () awful.tag.incmwfact(-0.05)		  end,
-			  {description = "decrease master width factor", group = "layout"}),
-	awful.key({ vars.modkey, "Shift"   }, "h",	 function () awful.tag.incnmaster( 1, nil, true) end,
-			  {description = "increase the number of master clients", group = "layout"}),
-	awful.key({ vars.modkey, "Shift"   }, "l",	 function () awful.tag.incnmaster(-1, nil, true) end,
-			  {description = "decrease the number of master clients", group = "layout"}),
-	awful.key({ vars.modkey, "Control" }, "h",	 function () awful.tag.incncol( 1, nil, true)	end,
-			  {description = "increase the number of columns", group = "layout"}),
-	awful.key({ vars.modkey, "Control" }, "l",	 function () awful.tag.incncol(-1, nil, true)	end,
-			  {description = "decrease the number of columns", group = "layout"}),
-	--awful.key({ vars.modkey, }, "space", function () awful.layout.inc( 1)				end,
-	--		  {description = "select next", group = "layout"}),
-	--awful.key({ vars.modkey, "Shift"   }, "space", function () awful.layout.inc(-1)				end,
-	--		  {description = "select previous", group = "layout"}),
-
-	awful.key({ vars.modkey, "Control" }, "n",
-			  function ()
-				  local c = awful.client.restore()
-				  -- Focus restored client
-				  if c then
-					c:emit_signal(
-						"request::activate", "key.unminimize", {raise = true}
-					)
-				  end
-			  end,
-			  {description = "restore minimized", group = "client"}),
-
-	--the old thing was awful.screen.focused().mypromptbox:run()
-	awful.key ({ vars.modkey }, "d", function () os.execute("rofi -modi drun,run -show drun") end,
-		{description = "execute rofi", group = "launcher"}),
-
 	awful.key({ vars.modkey }, "x",
 			  function ()
 				  awful.prompt.run {
@@ -110,17 +115,9 @@ globalkeys = gears.table.join(globalkeys,
 			  {description = "show the menubar", group = "launcher"})
 )
 
-clientkeys = gears.table.join(
-	awful.key({ vars.modkey, }, "f",
-		function (c)
-			c.maximized = not c.maximized
-			c:raise()
-		end,
-		{description = "toggle fullscreen", group = "client"}),
-	awful.key({ vars.modkey, "Shift"   }, "q",	  function (c) c:kill()						 end,
-			  {description = "close", group = "client"}),
-	awful.key({ vars.modkey }, "space",  awful.client.floating.toggle					 ,
-			  {description = "toggle floating", group = "client"}),
+clientkeys = gears.table.join(clientkeys, 
+	
+
 	awful.key({ vars.modkey, "Control" }, "Return", function (c) c:swap(awful.client.getmaster()) end,
 			  {description = "move to master", group = "client"}),
 	awful.key({ vars.modkey, }, "o",	  function (c) c:move_to_screen()			   end,

@@ -3,7 +3,7 @@
 -- signal::battery
 --      percentage
 --      state
-local upower_widget = require "lib.battery_widget"
+local upower_widget = require "lib.battery_upower"
 local battery_listener = upower_widget {
     device_path = '/org/freedesktop/UPower/devices/battery_BAT0',
     instant_update = true

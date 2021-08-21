@@ -2,13 +2,18 @@
 -- Default awesome theme --
 ---------------------------
 
-local theme_assets = require "beautiful.theme_assets"
+local theme_assets = require "beautiful.theme_assets" --cut this
+local theme_dir = require("gears.filesystem").get_dir("config")
 local dpi = require("beautiful.xresources").apply_dpi
+local color = require "lib.color"
 
 local gfs = require "gears.filesystem"
 local themes_path = gfs.get_themes_dir()
 
 local theme = {}
+
+-- Add icons
+require("themes.icons.icons")(theme)
 
 theme.font          = "Segoe UI"
 
@@ -103,7 +108,7 @@ theme.titlebar_maximized_button_focus_inactive  = themes_path.."default/titlebar
 theme.titlebar_maximized_button_normal_active = themes_path.."default/titlebar/maximized_normal_active.png"
 theme.titlebar_maximized_button_focus_active  = themes_path.."default/titlebar/maximized_focus_active.png"
 
-theme.wallpaper = gfs.get_xdg_config_home().."awesome/themes/suncolors/alena-aenami-sky1k.jpg"
+theme.wallpaper = gfs.get_xdg_config_home().."awesome/themes/alena-aenami-sky1k.jpg"
 
 
 -- You can use your own layout icons like this:
