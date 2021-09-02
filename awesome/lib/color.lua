@@ -1,15 +1,14 @@
 -- much help from https://www.niwa.nu/2013/05/math-behind-colorspace-conversions-rgb-hsl/
 -- basically a lua implementation of the above link
-local naughty = require 'naughty'
 
 -- Helper "round" method
-local function round(x, p) 
+local function round(x, p)
 	local power = math.pow(10, p or 0)
-	return (x * power + 0.5 - (x * power + 0.5) % 1) / power 
+	return (x * power + 0.5 - (x * power + 0.5) % 1) / power
 end
 
 -- Useful public methods
-function hex_to_rgb(hex)
+local function hex_to_rgb(hex)
 	hex = hex:gsub("#", "")
 	return
 		tonumber("0x"..hex:sub(1,2)),
@@ -17,21 +16,21 @@ function hex_to_rgb(hex)
 		tonumber("0x"..hex:sub(5,6))
 end
 
-function rgb_to_hex(obj)
+local function rgb_to_hex(obj)
 	local r = obj.r or obj[1]
-	local g = obj.g or obj[2] 
+	local g = obj.g or obj[2]
 	local b = obj.b or obj[3]
 	local h = (obj.hashtag or obj[4]) and "#" or ""
-	return h..string.format("%02x%02x%02x", 
-			math.floor(r), 
-			math.floor(g), 
+	return h..string.format("%02x%02x%02x",
+			math.floor(r),
+			math.floor(g),
 			math.floor(b))
 end
 
 --disclaimer I have no idea what any of the math does
-function rgb_to_hsl(obj)
+local function rgb_to_hsl(obj)
 	local r = obj.r or obj[1]
-	local g = obj.g or obj[2] 
+	local g = obj.g or obj[2]
 	local b = obj.b or obj[3]
 
 	local R, G, B = r / 255, g / 255, b / 255
@@ -72,12 +71,12 @@ function hsl_to_rgb(obj)
 	local l = obj.l or obj[3]
 
 	local temp1, temp2, temp_r, temp_g, temp_b, temp_h
-	
+
 	-- Set the temp variables
 	if l <= 0.5 then temp1 = l * (s + 1)
 	else temp1 = l + s - l * s
 	end
-	
+
 	temp2 = l * 2 - temp1
 
 	temp_h = h / 360
@@ -112,7 +111,7 @@ function hsl_to_rgb(obj)
 		round(rgb.b * 255)
 end
 
-function color(args)
+local function color(args)
 	-- The object that will be returned
 	local obj = {}
 
@@ -130,7 +129,7 @@ function color(args)
 	-- Default actual normal properties
 	obj.hashtag = args.hashtag or true
 	obj.disable_hsl = args.disable_hsl or false
-	
+
 	-- Set access to any
 	obj._access = "rgbhslhex"
 
@@ -153,17 +152,17 @@ function color(args)
 
 	-- Initially set other values
 	if obj._props.r ~= 0 or obj._props.g ~= 0 or obj._props.b ~= 0 then
-		obj:_rgb_to_hex() 
+		obj:_rgb_to_hex()
 		if not obj.disable_hsl then obj:_rgb_to_hsl() end
-	
+
 	elseif obj._props.hex ~= "000000" then
-		obj:_hex_to_rgb() 
+		obj:_hex_to_rgb()
 		if not obj.disable_hsl then obj:_rgb_to_hsl() end
 
 	elseif obj._props.h ~= 0 or obj._props.s ~= 0 or obj._props.l ~= 0 then
 		obj:_hsl_to_rgb()
 		obj:_rgb_to_hex()
-	
+
 	end --otherwise it's just black and everything is correct already
 
 
@@ -173,18 +172,18 @@ function color(args)
 	-- Check if it's already in _props to return it
 	-- TODO: Only remake values if necessary
 	mt.__index = function(self, key)
-		if self._props[key] then 
+		if self._props[key] then
 			-- Check if to just return nil for hsl
 			if obj.disable_hsl and string.match("hsl", key) then return self._props[key] end
-			
+
 			-- Check if it's not currently accessible
 			if not string.match(obj._access, key) then
 				if obj._access == "rgb" then
-					self:_rgb_to_hex() 
+					self:_rgb_to_hex()
 					if not obj.disable_hsl then obj:_rgb_to_hsl() end
 
 				elseif obj._access == "hex" then
-					self:_rgb_to_hex() 
+					self:_rgb_to_hex()
 					if not obj.disable_hsl then obj:_rgb_to_hsl() end
 
 				elseif obj._access == "hsl" then
@@ -201,12 +200,12 @@ function color(args)
 
 			return self._props[key]
 
-		else return self.class.__classDict[key] end
+		else return rawget(self, key) end
 	end
 
 	mt.__newindex = function(self, key, value)
-		if self._props[key] ~= nil then 
-			
+		if self._props[key] ~= nil then
+
 			-- Set basic important stuff
 			self._props[key] = value
 
@@ -224,7 +223,7 @@ function color(args)
 	return obj
 end
 
-return { 
+return {
 	color = color,
 	hex_to_rgb = hex_to_rgb,
 	rgb_to_hex = rgb_to_hex,

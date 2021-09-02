@@ -7,8 +7,11 @@ local _M = {
 	terminal = "kitty",
 	editor = os.getenv("EDITOR") or "nvim",
 	modkey = "Mod4",
-	navbar_height = dpi(40),
-	taglist_padding_sides = dpi(10)
+	top_navbar_height = dpi(40),
+	top_navbar_padding = dpi(5),
+	left_navbar_width = dpi(38),
+	taglist_padding_sides = dpi(10),
+	window_padding = dpi(5)
 }
 _M.editor_cmd = _M.terminal .. " -e " .. _M.editor
 awful.layout.layouts = {

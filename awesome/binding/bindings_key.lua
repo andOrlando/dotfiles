@@ -88,7 +88,7 @@ globalkeys = gears.table.join(
 )
 
 clientkeys = gears.table.join(
-	awful.key({mk}, "f", function(c) c.maximized = not c.maximized; c:raise() end,
+	awful.key({mk}, "f", function(c) c.fullscreen = not c.fullscreen; c:raise() end,
 		{description="Toggle focused client fullscreen", group="Client"}),
 
 	awful.key({mk, "Shift"}, "q", function(c) c:kill() end,

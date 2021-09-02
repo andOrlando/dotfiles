@@ -2,9 +2,11 @@
 -- Default awesome theme --
 ---------------------------
 
+--TODO: This theme sucks, make a better one with color api
+
 local theme_assets = require "beautiful.theme_assets" --cut this
-local theme_dir = require("gears.filesystem").get_dir("config")
 local dpi = require("beautiful.xresources").apply_dpi
+local theme_dir = require("gears.filesystem").get_dir("config")
 local color = require "lib.color"
 
 local gfs = require "gears.filesystem"
@@ -13,7 +15,7 @@ local themes_path = gfs.get_themes_dir()
 local theme = {}
 
 -- Add icons
-require("themes.icons.icons")(theme)
+require("themes.images")(theme)
 
 theme.font          = "Segoe UI"
 

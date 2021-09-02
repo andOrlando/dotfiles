@@ -1,4 +1,4 @@
-local dir = require("gears.filesystem").get_dir("config").."themes/icons/"
+local dir = require("gears.filesystem").get_dir("config").."themes/images/"
 local icons = {
 	battery_10 = dir.."battery_10.png",
 	battery_20 = dir.."battery_20.png",
@@ -16,7 +16,21 @@ local icons = {
 	volume_high = dir.."volume_high.png",
 	volume_mid = dir.."volume_mid.png",
 	volume_low = dir.."volume_low.png",
-	volume_mute = dir.."volume_mute.png"
+	volume_mute = dir.."volume_mute.png",
+	cool_question_mark = dir.."cool_question_mark.png",
+	calendar = dir.."calendar.png",
+	lightbulb = dir.."lightbulb.png",
+	lock = dir.."lock.png",
+	scissors = dir.."scissors.png",
+	theme = dir.."theme.png",
+	wifi_0 = dir.."wifi_0.png",
+	wifi_1 = dir.."wifi_1.png",
+	wifi_2 = dir.."wifi_2.png",
+	wifi_3 = dir.."wifi_3.png",
+	brightness = dir.."brightness.png",
+	cpu = dir.."cpu.png",
+	ram = dir.."ram.png",
+	ssd = dir.."ssd.png",
 }
 
 return function(table)

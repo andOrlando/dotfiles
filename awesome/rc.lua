@@ -18,21 +18,28 @@ require "awful.hotkeys_popup.keys"
 require "awful.autofocus"
 
 -- Set up error handling
-require "main.error-handling" 
+require "main.error-handling"
 
--- Set up battery and volume signals (thanks JavaCafe01)
+-- Set up a bunch of signals (thanks JavaCafe01)
 require "lib.battery"
 require "lib.volume"
+require("lib.playerctl").enable { backend = "playerctl_lib" }
+require "lib.cpu"
+require "lib.ram"
+require "lib.disk"
+
+-- Register some xproperties
+awesome.register_xproperty("WM_CLASS", "string")
 
 -- Initializes theme
 beautiful.init(require("gears").filesystem.get_xdg_config_home() ..
 	"awesome/themes/" .. vars.theme .. "/theme.lua")
 
 -- Shitty menu TODO: remove
-local mymainmenu = require("deco.menu") 
+local mymainmenu = require("deco.menu")
 
 -- Does the thing for the menubar (still remove)
-menubar.utils.terminal = vars.terminal 
+menubar.utils.terminal = vars.terminal
 
 -- Sets up deco stuff
 require "deco.screens"
@@ -46,12 +53,11 @@ require "binding.bindings_key"
 awful.spawn.once "picom"
 
 
--- {{{ Rules
 awful.rules.rules = {
 	--normal
 	{
 		rule = {},
-		properties = { 
+		properties = {
 			border_width = beautiful.border_width,
 			border_color = beautiful.border_normal,
 			focus = awful.client.focus.filter,
@@ -70,12 +76,12 @@ awful.rules.rules = {
 			class = { "jetbrains-studio" }
 		}
 	},
-	
+
 	--titlebars
 	{
-		rule_any = { 
-			type = { 
-				"normal", 
+		rule_any = {
+			type = {
+				"normal",
 				"dialog"
 			}
 		},
@@ -100,7 +106,7 @@ awful.rules.rules = {
 			role = {
 				"pop-up",       -- e.g. Google Chrome's (detached) Developer Tools.
 			}
-		}, 
+		},
 		properties = { floating = true },
 	},
 
@@ -131,7 +137,7 @@ awful.rules.rules = {
 	},
 	{
 		rule = {
-			instance = 'sun-awt-X11-XFramePeer', 
+			instance = 'sun-awt-X11-XFramePeer',
 			class = 'jetbrains-studio',
 			name = 'Android Virtual Device Manager'
 		},
@@ -149,38 +155,9 @@ awful.rules.rules = {
 			placement = awful.placement.centered
 		}
 	},
-	--[[{
-		rule = {
-			instance = 'sun-awt-X11-XFramePeer', 
-			class = 'jetbrains-studio',
-			name = 'Welcome to Android Studio'
-		},
-		properties = {
-			titlebars_enabled = false,
-			floating = true,
-			focus = true,
-			placement = awful.placement.centered
-		}
-	},
-	{
-		rule = {
-			instance = 'sun-awt-X11-XWindowPeer', 
-			class = 'jetbrains-studio',
-			name = 'win0'
-		},
-		properties = {
-			titlebars_enabled = false,
-			floating = true,
-			focus = true,
-			border_width = 0,
-			placement = awful.placement.centered
-		}
-	}]]
 }
--- }}}
 
--- {{{ Signals
--- Signal function to execute when a new client appears.
+
 client.connect_signal("manage", function (c)
     -- Set the windows at the slave,
     -- i.e. put it at the end of others instead of setting it master.
@@ -195,12 +172,25 @@ client.connect_signal("manage", function (c)
 end)
 
 
--- Enable sloppy focus, so that focus follows mouse.
 client.connect_signal("mouse::enter", function(c)
     c:emit_signal("request::activate", "mouse_enter", {raise = false})
 end)
 
 client.connect_signal("focus", function(c) c.border_color = beautiful.border_focus end)
 client.connect_signal("unfocus", function(c) c.border_color = beautiful.border_normal end)
--- }}}
 
+--[[
+local timed = require("lib.rubato").timed {
+	intro = 0.2,
+	duration = 0.25,
+	prop_intro = true
+}
+
+local naughty = require 'naughty'
+timed:subscribe(function(pos)
+	naughty.notify {text=tostring(pos)}
+	print(pos)
+end)
+
+timed.target = 1
+]]
