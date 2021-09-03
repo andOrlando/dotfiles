@@ -7,9 +7,7 @@ local beautiful = require 'beautiful'
 local color = require 'lib.color'
 
 
-local function set_x(x)
-	return function(geo, args) return {x=x, y=(args.parent.height - geo.height)/2} end
-end
+local function set_x(x) return function(geo, args) return {x=x, y=(args.parent.height - geo.height)/2} end end
 
 --height, margins
 --height bar, height handle, margins, color bar, color bar active, color handle
@@ -109,8 +107,8 @@ local function create_slider(args)
 		subscribed = function(pos, time, dt)
 			value = pos
 			layout:move(1, set_x(pos))
-
 			bar:emit_signal("widget::redraw_needed")
+
 			widget:emit_signal("slider::moved",
 				(pos-value_min)/(value_max - value_min))
 
@@ -168,13 +166,11 @@ local function create_slider(args)
 			--short circuit if above or below
 			if lpos < value_min then
 				timed.target = value_min
-				return true
+
 			elseif lpos > value_max then
 				timed.target = value_max
-				return true
-			end
 
-			timed.target = lpos
+			else timed.target = lpos end
 
 			return true
 		end,"fleur")

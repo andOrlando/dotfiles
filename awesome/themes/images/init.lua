@@ -31,6 +31,9 @@ local icons = {
 	cpu = dir.."cpu.png",
 	ram = dir.."ram.png",
 	ssd = dir.."ssd.png",
+	pause = dir.."pause.png",
+	skip_next = dir.."skip_next.png",
+	skip_prev = dir.."skip_prev.png",
 }
 
 return function(table)

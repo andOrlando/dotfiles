@@ -2,7 +2,6 @@ local wibox = require "wibox"
 local gears = require "gears"
 local awful = require "awful"
 local beautiful = require "beautiful"
----@diagnostic disable-next-line: unused-local
 local naughty = require "naughty"
 local dpi = require("beautiful.xresources").apply_dpi
 local rubato = require "lib.rubato"
@@ -104,7 +103,7 @@ local function create_taglist_widgets(s, slidey_thing)
 		end)
 
 		hover_timed:subscribe(function(pos)
-			d.dim = 1 - 0.2 * pos
+			d.dim = 1 - 0.1 * pos
 			update_rgb(ia_rgb)
 		end)
 
@@ -204,7 +203,7 @@ local function create_slidey_thing(s)
 	end)
 
 	hover_timed:subscribe(function(_pos)
-		dim = 1 - 0.3 * _pos
+		dim = 1 - 0.15 * _pos
 		update_slidey_thing(w, dim, pos)
 	end)
 
@@ -466,12 +465,22 @@ local function create_cool_clock_widget()
 	return a3
 end
 
-
 local function create_uncool_clock_widget()
 	local time = os.time()
 	local sec, min, hour = os.date("%S", time), os.date("%M", time), os.date("%H") % 12
 
+	local hour_textbox
+	local min_textbox
+	local sec_textbox
 
+	local widget = {
+		{
+			layout = wibox.layout
+		},
+		shape = gears.shape.rounded_rect,
+		bg = beautiful.bg_normal_1,
+		layout = wibox.container.background,
+	}
 
 end
 
@@ -489,7 +498,7 @@ local function create_tasklist_widget(s) --TODO
 					widget = awful.widget.clienticon,
 				},
 				margins = 6,
-				widget  = wibox.container.margin
+				layout = wibox.container.margin
 			},
 			---@diagnostic disable-next-line: unused-local
 			create_callback = function(self, c, index, objects)
@@ -545,7 +554,7 @@ local function create_top_navbar(s, rightthing)
 		{	{	--create_cool_clock_widget(),
 				create_battery_widget(),
 				create_volume_widget(),
-				require("deco.specificwidgets.hamburger")(awful.button({}, 1, function()
+				require("lib.awesome-widgets.hamburger")(awful.button({}, 1, function()
 					rightthing:toggle()
 				end)),
 				spacing = dpi(6),
@@ -590,7 +599,7 @@ local function create_top_navbar(s, rightthing)
 	}
 
 	--naughty.notify {text=tostring(s.top_navbar:get_xproperty("WM_NAME", "TEST"))}
-	--s.top_navbar:set_xproperty("WM_CLASS", "blur-exclude")
+	--s.top_navbar:set_xproperty("WM_CLASS", "blur")
 
 end
 
@@ -600,19 +609,17 @@ local function create_left_navbar(s)
 		screen = s,
 		bg = beautiful.bg_normal.."64",
 		width = variables.left_navbar_width,
-		type = "dock"
 	}
 
 	s.left_navbar:setup {
 		{	create_tasklist_widget(s),
 			layout = wibox.layout.fixed.vertical
 		},
-		{	markup = "hi",
-			buttons = awful.button({}, 1, function() naughty.notify {text="heyo "..tostring(s.left_navbar:get_xproperty("WM_CLASS"))} end),
-			widget = wibox.widget.textbox,
-		},
 		layout = wibox.layout.align.vertical
 	}
+
+	--naughty.notify {text="heyo "..tostring(s.left_navbar:get_xproperty("WM_CLASS"))}
+	s.left_navbar:set_xproperty("WM_CLASS", "blur")
 
 
 end

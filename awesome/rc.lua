@@ -179,7 +179,7 @@ end)
 client.connect_signal("focus", function(c) c.border_color = beautiful.border_focus end)
 client.connect_signal("unfocus", function(c) c.border_color = beautiful.border_normal end)
 
---[[
+
 local timed = require("lib.rubato").timed {
 	intro = 0.2,
 	duration = 0.25,
@@ -188,9 +188,10 @@ local timed = require("lib.rubato").timed {
 
 local naughty = require 'naughty'
 timed:subscribe(function(pos)
-	naughty.notify {text=tostring(pos)}
+	--naughty.notify {text=tostring(pos)}
 	print(pos)
 end)
 
-timed.target = 1
-]]
+--timed.target = 1
+--naughty.notify {text="target: "..tostring(timed.target)}
+

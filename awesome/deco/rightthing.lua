@@ -21,8 +21,10 @@ local function create_music_widget(s_dpi)
 		widget = wibox.widget.imagebox
 	}
 
-	--local name_widget = wibox.widget.textbox("none")
-	local title_widget = wibox.widget.textbox("No Media Playing")
+	local function headerize(str) return "<span font='13' color='".."#ffffff".."'>"..str.."</span>" end
+	local function subheaderize(str) return "<span font='10' color='".."#aaaaaa".."'>"..str.."</span>" end
+
+	local title_widget = wibox.widget.textbox(headerize("No media playing"))
 	local artist_widget = wibox.widget.textbox("")
 	title_widget.ellipsize = "end"
 	artist_widget.ellipsize = "end"
@@ -30,29 +32,52 @@ local function create_music_widget(s_dpi)
 	local _, t_height = title_widget:get_preferred_size_at_dpi(s_dpi)
 	local _, a_height = title_widget:get_preferred_size_at_dpi(s_dpi)
 
+	local playpause_widget = require("lib.awesome-widgets.playpause") {
+		forced_width = dpi(25),
+		forced_height = dpi(25),
+		button = awful.button({}, 1, function() awful.spawn("playerctl play-pause") end),
+	}
+
+	--sets playpause status based off playerctl
+	local function set_playpause_status()
+		awful.spawn.with_line_callback("playerctl status", {
+			stdout = function(string)
+				if string == "Paused" then playpause_widget:set(1)
+				else playpause_widget:set(0) end
+			end
+		})
+	end
+
+	set_playpause_status()
+
 	-- Get Song Info
 	awesome.connect_signal("bling::playerctl::title_artist_album",
 	function(title, artist, art_path, player_name)
 		art:set_image(gears.surface.load_uncached(art_path or nil))
-		title_widget:set_markup_silently(title or "No Title")
-		artist_widget:set_markup_silently((artist and artist.." via " or "")..player_name)
+		title_widget:set_markup_silently(headerize(title or "No Title"))
+		artist_widget:set_markup_silently(subheaderize((artist and artist.." via " or "")..player_name))
+
+		set_playpause_status()
 	end)
 
 	awesome.connect_signal("bling::playerctl::no_players",
 	function()
 		art:set_image(nil)
 		title_widget:set_markup_silently("No media playing")
-		artist_widget:set_markup_silently("No media playing")
+		artist_widget:set_markup_silently("")
+
+		set_playpause_status()
 	end)
 
-	awesome.connect_signal("bling::playerctl::position",
+	--[[awesome.connect_signal("bling::playerctl::position",
 	function(interval_sec, length_sec)
 		naughty.notify {text=tostring(interval_sec).." "..tostring(length_sec)}
-	end)
+	end)]]
 
 
 
-	return {
+	return
+	{
 		{
 			art,
 			shape = gears.shape.rounded_rect,
@@ -63,28 +88,71 @@ local function create_music_widget(s_dpi)
 		{
 			{
 				{
-					title_widget,
-					strategy = "max",
-					height = t_height,
-					layout = wibox.container.constraint
+					{
+						title_widget,
+						strategy = "max",
+						height = t_height,
+						layout = wibox.container.constraint
+					},
+					{
+						artist_widget,
+						strategy = "max",
+						height = a_height,
+						layout = wibox.container.constraint
+					},
+					layout = wibox.layout.fixed.vertical
 				},
-				{
-					artist_widget,
-					strategy = "max",
-					height = a_height,
-					layout = wibox.container.constraint
-				},
-				layout = wibox.layout.fixed.vertical
+				left = dpi(8),
+				layout = wibox.container.margin
 			},
-			left = dpi(8),
-			layout = wibox.container.margin
+			{
+				{
+					{
+						{
+							{
+								{
+									image = beautiful.skip_prev,
+									forced_width = dpi(25),
+									forced_height = dpi(25),
+									widget = wibox.widget.imagebox
+								},
+								--[[{
+									image = beautiful.pause,
+									forced_width = dpi(25),
+									forced_height = dpi(25),
+									widget = wibox.widget.imagebox
+								},]]
+								playpause_widget,
+								{
+									image = beautiful.skip_next,
+									forced_width = dpi(25),
+									forced_height = dpi(25),
+									widget = wibox.widget.imagebox
+								},
+								layout = wibox.layout.fixed.horizontal
+							},
+							margins = dpi(4),
+							layout = wibox.container.margin
+						},
+						shape = gears.shape.rounded_rect,
+						bg = beautiful.bg_normal_1,
+						layout = wibox.container.background
+					},
+					--margins = dpi(4),
+					layout = wibox.container.margin
+				},
+				valign = "bottom",
+				halign = "right",
+				layout = wibox.container.place
+			},
+			layout = wibox.layout.stack
 		},
+		fill_space = true,
 		layout = wibox.layout.fixed.horizontal,
 	}
 
 end
 
----@diagnostic disable-next-line: unused-local, unused-function
 local function create_brightness_widget()
 
 	local brightness_slider = slider {
@@ -96,7 +164,7 @@ local function create_brightness_widget()
 	}
 
 	awful.spawn.with_line_callback("xbacklight", {
-		stdout = function(out) brightness_slider:hard_set(math.floor(out/100)) end
+		stdout = function(out) brightness_slider:hard_set(out/100) end
 	})
 
 	local image = wibox.widget {
@@ -157,17 +225,13 @@ local function create_volume_widget()
 		layout = wibox.container.background
 	}
 
-	--WHAT DO I WANT?
-	--if it starts at signal::volume, don't do slider::moved
-	--if it doesn't start at signal::volume, do don't do signal::volume
-
 	local volume_first = false
 	local slider_first = false
 	local finished_setting = true
 
 	awesome.connect_signal("signal::volume", function(percentage)
 		if finished_setting then
-			--if not slider_first then volume_first = true; naughty.notify {text="set"} end
+			if not slider_first then volume_first = true end
 			if volume_first then
 				volume_slider:set(math.min(percentage, 100)/100)
 			end
@@ -175,7 +239,6 @@ local function create_volume_widget()
 	end)
 
 	volume_slider:connect_signal("slider::moved", function(_, pos)
-		--naughty.notify{text=tostring(volume_first).." "..tostring(slider_first).." "..tostring(finished_setting)}
 		if not volume_first then slider_first = true end
 		if slider_first then
 			finished_setting = false
@@ -187,10 +250,7 @@ local function create_volume_widget()
 		end
 	end)
 
-	--volume_slider:connect_signal("slider::started", function()
-	--end)
 	volume_slider:connect_signal("slider::ended", function()
-		--naughty.notify{text="ended"}
 		slider_first = false
 		volume_first = false
 	end)
@@ -497,4 +557,5 @@ return function(s)
 	return rightthing
 
 end
+
 
